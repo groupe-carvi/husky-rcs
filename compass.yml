@@ -1,0 +1,16 @@
+name: husky-robot-control-server
+id: ari:cloud:compass:e489ce12-950f-402e-8d4e-940f40450fe5:component/d3e19302-71bb-4ac1-ba88-53bb212819ec/35c4c91b-b211-4210-bab6-4d207313519c
+description: A a dora node implementing a grpc server for remote control access for husky A300 robots through ROS2 bridge.
+configVersion: 1
+typeId: SERVICE
+fields:
+  tier: 4
+links:
+  - name: null
+    type: REPOSITORY
+    url: https://github.com/groupe-carvi/husky-robot-control-server
+relationships:
+  DEPENDS_ON: []
+labels:
+  - source:github
+customFields: null
