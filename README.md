@@ -180,14 +180,39 @@ husky-rcs/
 
 ## 🔧 Configuration
 
+### Environment Variables
+
+Create a `.env` file or set environment variables:
+
+```bash
+# WebSocket server port (default: 8767)
+export HUSKY_WEBSOCKET_PORT=8080
+
+# Optional: ROS2 domain ID
+export ROS_DOMAIN_ID=0
+```
+
 ### Changing Port
-Edit `husky_control_server.py`:
+
+#### Option 1: Environment Variable (Recommended)
+
+```bash
+export HUSKY_WEBSOCKET_PORT=8080
+./start.sh
+```
+
+#### Option 2: Code Modification
+
+Edit `husky_rcs.py`:
+
 ```python
 def __init__(self, ros2_node, host="localhost", port=8767):
 ```
 
 ### Changing ROS2 Topic
+
 Edit the `HuskyROS2Node` class:
+
 ```python
 self.cmd_vel_publisher = self.create_publisher(
     Twist, 

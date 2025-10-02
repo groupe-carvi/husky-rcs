@@ -7,6 +7,7 @@ Receives joystick input via WebSocket and publishes to ROS2 cmd_vel topic.
 import asyncio
 import json
 import logging
+import os
 import threading
 from typing import Dict, Any
 
@@ -150,9 +151,12 @@ async def main():
     ros2_thread = threading.Thread(target=lambda: rclpy.spin(ros2_node), daemon=True)
     ros2_thread.start()
     
+    # Get WebSocket port from environment variable or use default
+    websocket_port = int(os.getenv('HUSKY_WEBSOCKET_PORT', 8767))
+    
     # Create and start WebSocket server
-    websocket_server = HuskyWebSocketServer(ros2_node)
-    logger.info("Starting WebSocket server on localhost:8767")
+    websocket_server = HuskyWebSocketServer(ros2_node, port=websocket_port)
+    logger.info(f"Starting WebSocket server on localhost:{websocket_port}")
     
     try:
         # Start the WebSocket server
