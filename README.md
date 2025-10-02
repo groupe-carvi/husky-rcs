@@ -1,149 +1,119 @@
 # Husky Robot Control Server 🤖
 
-A teleoperation control server for Husky robots using WebSocket and ROS2. This project enables remote control of a Husky robot via joystick commands sent through WebSocket and converted to ROS2 `geometry_msgs/Twist` messages.
-
-
+Teleoperation server bridging WebSocket joystick commands to ROS2 `geometry_msgs/Twist` messages on `/cmd_vel`.
 
 ## 🚀 Features
 
-- **WebSocket Server**: Real-time joystick command reception
-- **ROS2 Integration**: Native publishing to `/cmd_vel` topic
-- **Asynchronous Architecture**: Simultaneous handling of multiple WebSocket clients
-- **Standard Format**: `geometry_msgs/Twist` messages compatible with all ROS2 robots
-- **Detailed Logging**: Complete tracking of connections and commands
-
-
+- Async WebSocket server (multi‑client)
+- Publishes directly to ROS2 `/cmd_vel`
+- Standard JSON Twist schema (linear / angular)
+- Threaded ROS2 spin + asyncio loop
+- Configurable port via `HUSKY_WEBSOCKET_PORT`
+- Graceful handling of malformed JSON & disconnects
+- Systemd deployment auto-setup via `install.sh`
 
 ## 📋 Prerequisites
 
 ### System Requirements
+
 - Ubuntu 24.04 LTS (Noble)
 - ROS2 Jazzy
 - Python 3.12+
 
 ### ROS2 Dependencies
+
 ```bash
-# Install ROS2 Jazzy (if not already installed)
 sudo apt update
 sudo apt install ros-jazzy-desktop-full
-
-# Install required ROS2 packages
 sudo apt install python3-websockets
 ```
 
 ### Python Dependencies
-```bash
 
-# Install dependencies with uv (recommended)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh   # if uv not installed
 uv sync
 ```
+
 ## 🛠️ Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/groupe-carvi/husky-rcs.git
-   cd husky-rcs
-   ```
+### Quick (recommended)
 
-2. **Configure ROS2 environment**
-   ```bash
-   source /opt/ros/jazzy/setup.bash
-   ```
+```bash
+git clone https://github.com/groupe-carvi/husky-rcs.git
+cd husky-rcs
+./install.sh   # installs deps + systemd service
+```
 
-3. **Install dependencies and setup service**
-   ```bash
-   # Run the automated installation script (recommended)
-   ./install.sh
-   
-   # Or install manually (see below)
-   ```
+### Manual
 
-4. **Make startup script executable**
-   ```bash
-   chmod +x start.sh
-   ```
+```bash
+git clone https://github.com/groupe-carvi/husky-rcs.git
+cd husky-rcs
+source /opt/ros/jazzy/setup.bash
+curl -LsSf https://astral.sh/uv/install.sh | sh  # if needed
+uv sync
+chmod +x start.sh
+```
+
+Optional: copy `.env.example` to `.env` and adjust values.
 
 ## 🎮 Usage
 
-### Starting the Server
+Start (script):
 
-#### Option 1: Automatic script
 ```bash
 ./start.sh
 ```
+Start (manual):
 
-#### Option 2: Manual startup
 ```bash
 source /opt/ros/jazzy/setup.bash
-python3 husky_control_server.py
+python3 husky_rcs.py
 ```
+Background:
 
-#### Option 3: Background mode
 ```bash
-source /opt/ros/jazzy/setup.bash
-python3 husky_control_server.py &
+nohup python3 husky_rcs.py &
 ```
+Test client:
 
-The server starts on `localhost:8767` by default.
-
-### Testing with Example Client
-
-In another terminal:
 ```bash
-source .venv/bin/activate  # If using uv
 python3 example_client.py
 ```
+Monitor topic:
 
-### Monitoring ROS2 Messages
 ```bash
-# Listen to messages on cmd_vel topic
-source /opt/ros/jazzy/setup.bash
 ros2 topic echo /cmd_vel
-
-# List all active topics
-ros2 topic list
-
-# View topic information
-ros2 topic info /cmd_vel
 ```
 
 ## 📡 WebSocket API
 
 ### Connection
-- **URL**: `ws://localhost:8767`
-- **Format**: JSON
+
+- URL: `ws://localhost:8767`
+- Format: JSON
 
 ### Message Format
-```json
+
+```jsonc
 {
-  "linear": {
-    "x": 1.0,    // Linear velocity forward/backward (m/s)
-    "y": 0.0,    // Linear velocity left/right (m/s)
-    "z": 0.0     // Linear velocity up/down (m/s)
-  },
-  "angular": {
-    "x": 0.0,    // Rotation around X axis (rad/s)
-    "y": 0.0,    // Rotation around Y axis (rad/s)
-    "z": 0.5     // Rotation around Z axis - yaw (rad/s)
-  }
+   "linear": { "x": 1.0, "y": 0.0, "z": 0.0 },   // m/s
+   "angular": { "x": 0.0, "y": 0.0, "z": 0.5 }   // rad/s (yaw)
 }
 ```
 
 ### Command Examples
-```json
-// Move forward
+
+```jsonc
+// Forward
 {"linear": {"x": 1.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": 0.0}}
-
-// Move backward
+// Backward
 {"linear": {"x": -1.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": 0.0}}
-
-// Turn right
+// Turn Right (yaw -)
 {"linear": {"x": 0.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": -1.0}}
-
-// Turn left
+// Turn Left (yaw +)
 {"linear": {"x": 0.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": 1.0}}
-
 // Stop
 {"linear": {"x": 0.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": 0.0}}
 ```
@@ -153,179 +123,116 @@ ros2 topic info /cmd_vel
 ```
 ┌─────────────────┐    WebSocket     ┌──────────────────────┐    ROS2     ┌─────────────┐
 │   Web Client    │◄─────────────────►│  Husky Control      │◄────────────►│   Husky     │
-│   (Joystick)    │   (Port 8767)    │      Server          │  (/cmd_vel)  │   Robot     │
+│ (Joystick/Web)  │   (Port 8767)    │      Server          │  (/cmd_vel)  │   Robot     │
 └─────────────────┘                  └──────────────────────┘              └─────────────┘
 ```
 
 ### Main Components
-1. **`HuskyWebSocketServer`**: WebSocket connection management
-2. **`HuskyROS2Node`**: ROS2 node for message publishing
-3. **Threading**: Parallel execution of WebSocket server and ROS2 node
-```
+
+1. `HuskyWebSocketServer` – Accepts clients & validates JSON
+2. `HuskyROS2Node` – Publishes `Twist` to `/cmd_vel`
+3. Threading – ROS2 spin in thread, asyncio loop in main thread
 
 ## 📁 Project Structure
 
 ```
 husky-rcs/
-├── husky_control_server.py    # Main server
-├── example_client.py          # Test client
-├── start_husky_control.sh     # Startup script
+├── husky_rcs.py          # Main server
+├── example_client.py     # Test WebSocket client
+├── start.sh              # Convenience launcher
+├── install.sh            # Installer + systemd setup
+├── .env.example          # Environment template
 ├── launch/
-│   └── husky_control.launch.py # ROS2 launch file
-├── pyproject.toml            # Project configuration
-├── README.md                 # Documentation
-└── LICENSE.md               # License
+│   └── husky_control.launch.py
+├── pyproject.toml        # Python project config (uv compatible)
+├── README.md
+└── LICENSE.md
 ```
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-Create a `.env` file or set environment variables:
+`.env` (or export):
 
 ```bash
-# WebSocket server port (default: 8767)
-export HUSKY_WEBSOCKET_PORT=8080
-
-# Optional: ROS2 domain ID
-export ROS_DOMAIN_ID=0
+# WebSocket server port (default 8767)
+HUSKY_WEBSOCKET_PORT=8767
+# Optional ROS domain
+ROS_DOMAIN_ID=0
 ```
 
-### Changing Port
-
-#### Option 1: Environment Variable (Recommended)
+### Change Port (runtime)
 
 ```bash
 export HUSKY_WEBSOCKET_PORT=8080
 ./start.sh
 ```
 
-#### Option 2: Code Modification
+### Change Port (code)
 
-Edit `husky_rcs.py`:
+Edit constructor in `husky_rcs.py` (`HuskyWebSocketServer`).
 
+### Change ROS2 Topic
+
+Modify publisher line in `HuskyROS2Node`:
 ```python
-def __init__(self, ros2_node, host="localhost", port=8767):
-```
-
-### Changing ROS2 Topic
-
-Edit the `HuskyROS2Node` class:
-
-```python
-self.cmd_vel_publisher = self.create_publisher(
-    Twist, 
-    'cmd_vel',  # Change topic name here
-    qos_profile
-)
+self.cmd_vel_publisher = self.create_publisher(Twist, 'cmd_vel', qos_profile)
 ```
 
 ## 🐛 Troubleshooting
 
-### Error "Address already in use"
-```bash
-# Check which process is using the port
-lsof -i :8767
+| Issue | Diagnosis | Fix |
+|-------|-----------|-----|
+| Port already in use | `lsof -i :8767` | Change `HUSKY_WEBSOCKET_PORT` or kill PID |
+| `No module named 'rclpy'` | ROS env not sourced | `source /opt/ros/jazzy/setup.bash` |
+| No messages on `/cmd_vel` | `ros2 node list` empty | Restart server / verify logs |
+| Wrong topic name | `ros2 topic list` | Ensure publisher topic matches consumer |
 
-# Change port in husky_control_server.py or kill the process
-kill -9 <PID>
-```
-
-### Error "No module named 'rclpy'"
-```bash
-# Verify ROS2 is sourced
-source /opt/ros/jazzy/setup.bash
-
-# Check ROS2 installation
-ros2 --version
-```
-
-### Messages not received on topic
-```bash
-# Check if node is active
-ros2 node list
-
-# Check if topic exists
-ros2 topic list | grep cmd_vel
-
-# Check publication frequency
-ros2 topic hz /cmd_vel
 ## 🧪 Testing
 
-### Automated Test
+Basic flow:
 ```bash
-# Terminal 1: Start server
-source /opt/ros/jazzy/setup.bash
-python3 husky_control_server.py &
-
-# Terminal 2: Run test client
-source .venv/bin/activate
+# Terminal 1
+source /opt/ros/jazzy/setup.bash && python3 husky_rcs.py
+# Terminal 2
 python3 example_client.py
-
-# Terminal 3: Verify ROS2 messages
-source /opt/ros/jazzy/setup.bash
+# Terminal 3
 ros2 topic echo /cmd_vel
 ```
 
-### Manual Test with websocat
-```bash
-# Install websocat
-sudo apt install websocat
+Manual WebSocket (websocat):
 
-# Connect manually
+```bash
+sudo apt install -y websocat
 websocat ws://localhost:8767
-
-# Send JSON command
-{"linear": {"x": 1.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": 0.0}}
-## 📊 Monitoring
-
-### Server Logs
-Logs include:
-- Client connections/disconnections
-- Commands received and processed
-- ROS2 messages published
-- JSON parsing errors
-
-### ROS2 Tools
-```bash
-# View active nodes
-ros2 node list
-
-# Node information
-ros2 node info /husky_control_server
-
-# Topic graph
-rqt_graph
-
-# Real-time monitoring
-ros2 topic hz /cmd_vel
-ros2 topic bw /cmd_vel
-## 🚀 Deployment
-
-### Automated Service Installation
-
-The `install.sh` script automatically creates and enables a systemd service. After running `./install.sh`, the service will be available as `husky-control-server`.
-
-```bash
-# Start the service
-sudo systemctl start husky-control-server
-
-# Check status
-sudo systemctl status husky-control-server
-
-# View logs
-journalctl -u husky-control-server -f
-
-# Stop the service
-sudo systemctl stop husky-control-server
-
-# Disable the service
-sudo systemctl disable husky-control-server
+{"linear": {"x": 0.5, "y": 0, "z": 0}, "angular": {"x": 0, "y": 0, "z": 0.2}}
 ```
 
-### Manual systemd Service (Alternative)
+## 📊 Monitoring
 
-Create `/etc/systemd/system/husky-control-server.service`:
+```bash
+ros2 node list
+ros2 node info /husky_control_server
+ros2 topic hz /cmd_vel
+ros2 topic bw /cmd_vel
+```
+Optional: `rqt_graph` for topology.
+
+## 🚀 Deployment
+
+### Automated (install.sh)
+
+```bash
+./install.sh
+sudo systemctl start husky-control-server.service
+sudo systemctl status husky-control-server.service
+journalctl -u husky-control-server.service -f
+```
+
+### Manual systemd Unit
+`/etc/systemd/system/husky-control-server.service`:
+
 ```ini
 [Unit]
 Description=Husky Robot Control Server
@@ -337,49 +244,50 @@ User=robot
 WorkingDirectory=/path/to/husky-rcs
 Environment=ROS_DOMAIN_ID=0
 ExecStartPre=/bin/bash -c 'source /opt/ros/jazzy/setup.bash'
-ExecStart=/usr/bin/python3 husky_control_server.py
+ExecStart=/usr/bin/python3 husky_rcs.py
 Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 ```
+Enable & start:
 
-Enable the service:
 ```bash
-sudo systemctl enable husky-control.service
-sudo systemctl start husky-control.service
+sudo systemctl enable husky-control-server.service
+sudo systemctl start husky-control-server.service
+```
+
 ## 📝 Development
 
 ### Contributing
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. Fork
+2. Branch: `feat/<name>`
+3. Commit (concise, conventional if possible)
+4. PR with summary & test notes
 
-### Code Style
-- Follow PEP 8 conventions
-- Use docstrings for all functions
-- Add tests for new features## 📄 License
+### Style
+- PEP 8
+- Docstrings for public classes/functions
+- Keep logging informative (INFO for flow, DEBUG for data)
 
-This project is licensed under the Apache 2.0 License. See the [LICENSE.md](LICENSE.md) file for details.
+## 📄 License
+
+Apache 2.0 – see `LICENSE.md`.
 
 ## 👥 Authors
 
-- **Groupe Carvi** - [dev@carvi.ai](mailto:dev@carvi.ai)
+Groupe Carvi – <dev@carvi.ai>
 
 ## 🙏 Acknowledgments
 
-- Norlab for access to the Husky robot
+- Norlab (Husky access)
 - Python WebSocket community
-- Clearpath Robotics for Husky robots
-
----
+- Clearpath Robotics
 
 ## 🔗 Useful Links
 
-- [ROS2 Jazzy Documentation](https://docs.ros.org/en/jazzy/)
-- [Clearpath Husky Documentation](https://docs.clearpathrobotics.com/docs/robots/outdoor_robots/husky/)
-- [WebSocket RFC 6455](https://tools.ietf.org/html/rfc6455)
-- [geometry_msgs Documentation](https://docs.ros.org/en/noetic/api/geometry_msgs/html/index.html)
+- ROS2 Jazzy Docs: https://docs.ros.org/en/jazzy/
+- Husky Docs: https://docs.clearpathrobotics.com/docs/robots/outdoor_robots/husky/
+- WebSocket RFC: https://www.rfc-editor.org/rfc/rfc6455
+- geometry_msgs: https://docs.ros.org/en/noetic/api/geometry_msgs/html/index.html
