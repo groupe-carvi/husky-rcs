@@ -71,7 +71,7 @@ uv sync
 
 #### Option 1: Automatic script
 ```bash
-./start_husky_control.sh
+./start.sh
 ```
 
 #### Option 2: Manual startup
