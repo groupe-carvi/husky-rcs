@@ -13,6 +13,7 @@
 - `launch/husky_control.launch.py`: ROS2 launch file for deployment.
 
 ## Developer Workflows
+- **Install everything:** `./install.sh` (automated installation with systemd service)
 - **Start the server:**
   - `./start.sh` (preferred)
   - Or: `python3 husky_rcs.py` (ensure ROS2 environment is sourced)
@@ -47,4 +48,5 @@
 
 ## References
 - See `README.md` for full architecture, usage, and troubleshooting details.
-- Key files: `husky_rcs.py`, `example_client.py`, `start.sh`, `launch/husky_control.launch.py`.
+- Key files: `husky_rcs.py`, `example_client.py`, `start.sh`, `install.sh`, `launch/husky_control.launch.py`.
+- Service file: `husky-control-server.service` (template for systemd deployment).

@@ -51,18 +51,17 @@ uv sync
    source /opt/ros/jazzy/setup.bash
    ```
 
-3. **Install dependencies**
+3. **Install dependencies and setup service**
    ```bash
-   # With uv (recommended)
-   uv sync
+   # Run the automated installation script (recommended)
+   ./install.sh
    
-   # Or system Python
-   sudo apt install python3-websockets
+   # Or install manually (see below)
    ```
 
 4. **Make startup script executable**
    ```bash
-   chmod +x start_husky_control.sh
+   chmod +x start.sh
    ```
 
 ## 🎮 Usage
@@ -303,8 +302,30 @@ ros2 topic hz /cmd_vel
 ros2 topic bw /cmd_vel
 ## 🚀 Deployment
 
-### systemd Service (Optional)
-Create `/etc/systemd/system/husky-control.service`:
+### Automated Service Installation
+
+The `install.sh` script automatically creates and enables a systemd service. After running `./install.sh`, the service will be available as `husky-control-server`.
+
+```bash
+# Start the service
+sudo systemctl start husky-control-server
+
+# Check status
+sudo systemctl status husky-control-server
+
+# View logs
+journalctl -u husky-control-server -f
+
+# Stop the service
+sudo systemctl stop husky-control-server
+
+# Disable the service
+sudo systemctl disable husky-control-server
+```
+
+### Manual systemd Service (Alternative)
+
+Create `/etc/systemd/system/husky-control-server.service`:
 ```ini
 [Unit]
 Description=Husky Robot Control Server

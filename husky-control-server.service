@@ -1,0 +1,27 @@
+[Unit]
+Description=Husky Robot Control Server
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=robot
+WorkingDirectory=/path/to/husky-rcs
+Environment=ROS_DOMAIN_ID=0
+Environment=PYTHONPATH=/path/to/husky-rcs
+ExecStartPre=/bin/bash -c 'source /opt/ros/jazzy/setup.bash'
+ExecStart=/path/to/husky-rcs/.venv/bin/python3 /path/to/husky-rcs/husky_rcs.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Optional: Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/path/to/husky-rcs
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target
