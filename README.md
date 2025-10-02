@@ -32,16 +32,13 @@ sudo apt install python3-websockets
 ```
 
 ### Python Dependencies
-```bash
-# Clone the project
-git clone https://github.com/groupe-carvi/husky-rcs.git
-cd husky-rcs
+```bashp
 
 # Install dependencies with uv (recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 
-```## 🛠️ Installation
+## 🛠️ Installation
 
 1. **Clone the repository**
    ```bash
