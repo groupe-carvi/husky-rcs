@@ -10,23 +10,24 @@ For the moment the only supported setup is running Dora locally on the Husky A20
 
 1. Install dora-rs on your Husky A200 robot. Follow the instructions in the [dora-rs](https://dora-rs.ai/).
 
-2. install UV:
 
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-3. Clone this repository on your Husky A200 robot.
+2. Clone this repository on your Husky A200 robot.
 
 ```bash
 git clone https://github.com/groupe-carvi/dora-husky-rcs.git
 ```
 
-4. Build the dora dataflow:
+3. Build the dora dataflow:
 
 ```bash
 cd dora-husky-rcs
 dora build ./dataflow.yml
+```
+
+4. Start the dora dataflow:
+
+```bash
+dora run ./dataflow.yml
 ```
 
 ## References
