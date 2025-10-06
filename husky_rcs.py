@@ -89,7 +89,7 @@ class HuskyWebSocketServer:
 
 
 class HuskyROS2Node(Node):
-    """ROS2 node for publishing cmd_vel messages."""
+    """ROS2 node for publishing teleop/cmd_vel messages."""
     
     def __init__(self):
         super().__init__('husky_control_server')
@@ -102,9 +102,9 @@ class HuskyROS2Node(Node):
         )
         
         # Create publisher for cmd_vel
-        self.cmd_vel_publisher = self.create_publisher(
+        self.teleop_cmd_vel_publisher = self.create_publisher(
             TwistStamped, 
-            'cmd_vel', 
+            'teleop/cmd_vel', 
             qos_profile
         )
         
@@ -136,7 +136,7 @@ class HuskyROS2Node(Node):
             twist_stamped_msg.twist.angular.z = float(angular.get("z", 0.0))
             
             # Publish the message
-            self.cmd_vel_publisher.publish(twist_stamped_msg)
+            self.teleop_cmd_vel_publisher.publish(twist_stamped_msg)
             
             logger.debug(f"Published TwistStamped: frame_id={twist_stamped_msg.header.frame_id}, "
                         f"linear=({twist_stamped_msg.twist.linear.x}, {twist_stamped_msg.twist.linear.y}, {twist_stamped_msg.twist.linear.z}), "
