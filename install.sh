@@ -215,7 +215,6 @@ main() {
     check_root
     check_ubuntu_version
     check_python
-    check_ros2
     install_uv
     install_python_deps
     create_service_file
