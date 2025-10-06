@@ -15,7 +15,7 @@ import websockets
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import TwistStamped
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -29,8 +29,12 @@ class HuskyWebSocketServer:
         self.host = host
         self.port = port
         self.clients = set()
-        self.latest_joystick_data = {"linear": {"x": 0.0, "y": 0.0, "z": 0.0}, 
-                                   "angular": {"x": 0.0, "y": 0.0, "z": 0.0}}
+        self.latest_joystick_data = {
+            "twist": {
+                "linear": {"x": 0.0, "y": 0.0, "z": 0.0}, 
+                "angular": {"x": 0.0, "y": 0.0, "z": 0.0}
+            }
+        }
         self.ros2_node = ros2_node
 
     async def handle_client(self, websocket):
@@ -56,12 +60,21 @@ class HuskyWebSocketServer:
 
     async def process_joystick_data(self, data: Dict[str, Any]):
         """Process joystick data and update latest state."""
-        if "linear" in data and "angular" in data:
-            self.latest_joystick_data = data
-            logger.debug(f"Updated joystick data: {data}")
-            
-            # Publish to ROS2 immediately
-            self.ros2_node.publish_twist(data)
+        # Support both legacy Twist format and new TwistStamped format
+        if "twist" in data:
+            # New TwistStamped format
+            if "linear" in data["twist"] and "angular" in data["twist"]:
+                self.latest_joystick_data = data
+                logger.debug(f"Updated TwistStamped data: {data}")
+                self.ros2_node.publish_twist_stamped(data)
+            else:
+                logger.warning(f"Invalid TwistStamped data format: {data}")
+        elif "linear" in data and "angular" in data:
+            # Legacy Twist format - convert to TwistStamped
+            converted_data = {"twist": data}
+            self.latest_joystick_data = converted_data
+            logger.debug(f"Converted legacy Twist to TwistStamped: {converted_data}")
+            self.ros2_node.publish_twist_stamped(converted_data)
         else:
             logger.warning(f"Invalid joystick data format: {data}")
 
@@ -90,43 +103,53 @@ class HuskyROS2Node(Node):
         
         # Create publisher for cmd_vel
         self.cmd_vel_publisher = self.create_publisher(
-            Twist, 
+            TwistStamped, 
             'cmd_vel', 
             qos_profile
         )
         
         logger.info("ROS2 Husky node initialized successfully")
 
-    def publish_twist(self, joystick_data: Dict[str, Any]):
-        """Publish a Twist message from joystick data."""
+    def publish_twist_stamped(self, joystick_data: Dict[str, Any]):
+        """Publish a TwistStamped message from joystick data."""
         try:
-            twist_msg = Twist()
+            twist_stamped_msg = TwistStamped()
+            
+            # Set header
+            twist_stamped_msg.header.stamp = self.get_clock().now().to_msg()
+            header_data = joystick_data.get("header", {})
+            twist_stamped_msg.header.frame_id = header_data.get("frame_id", "base_link")
+            
+            # Extract twist data
+            twist_data = joystick_data.get("twist", {})
             
             # Extract linear velocities
-            linear = joystick_data.get("linear", {})
-            twist_msg.linear.x = float(linear.get("x", 0.0))
-            twist_msg.linear.y = float(linear.get("y", 0.0))
-            twist_msg.linear.z = float(linear.get("z", 0.0))
+            linear = twist_data.get("linear", {})
+            twist_stamped_msg.twist.linear.x = float(linear.get("x", 0.0))
+            twist_stamped_msg.twist.linear.y = float(linear.get("y", 0.0))
+            twist_stamped_msg.twist.linear.z = float(linear.get("z", 0.0))
             
             # Extract angular velocities
-            angular = joystick_data.get("angular", {})
-            twist_msg.angular.x = float(angular.get("x", 0.0))
-            twist_msg.angular.y = float(angular.get("y", 0.0))
-            twist_msg.angular.z = float(angular.get("z", 0.0))
+            angular = twist_data.get("angular", {})
+            twist_stamped_msg.twist.angular.x = float(angular.get("x", 0.0))
+            twist_stamped_msg.twist.angular.y = float(angular.get("y", 0.0))
+            twist_stamped_msg.twist.angular.z = float(angular.get("z", 0.0))
             
             # Publish the message
-            self.cmd_vel_publisher.publish(twist_msg)
+            self.cmd_vel_publisher.publish(twist_stamped_msg)
             
-            logger.debug(f"Published Twist: linear=({twist_msg.linear.x}, {twist_msg.linear.y}, {twist_msg.linear.z}), "
-                        f"angular=({twist_msg.angular.x}, {twist_msg.angular.y}, {twist_msg.angular.z})")
+            logger.debug(f"Published TwistStamped: frame_id={twist_stamped_msg.header.frame_id}, "
+                        f"linear=({twist_stamped_msg.twist.linear.x}, {twist_stamped_msg.twist.linear.y}, {twist_stamped_msg.twist.linear.z}), "
+                        f"angular=({twist_stamped_msg.twist.angular.x}, {twist_stamped_msg.twist.angular.y}, {twist_stamped_msg.twist.angular.z})")
             
         except Exception as e:
-            logger.error(f"Error publishing Twist message: {e}")
+            logger.error(f"Error publishing TwistStamped message: {e}")
 
 
 def run_ros2_node():
     """Run the ROS2 node in a separate thread."""
     rclpy.init()
+    node = None
     
     try:
         node = HuskyROS2Node()
@@ -134,7 +157,7 @@ def run_ros2_node():
     except KeyboardInterrupt:
         logger.info("ROS2 node interrupted")
     finally:
-        if 'node' in locals():
+        if node is not None:
             node.destroy_node()
         rclpy.shutdown()
 

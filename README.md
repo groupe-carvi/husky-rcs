@@ -1,12 +1,12 @@
 # Husky Robot Control Server 🤖
 
-Teleoperation server bridging WebSocket joystick commands to ROS2 `geometry_msgs/Twist` messages on `/cmd_vel`.
+Teleoperation server bridging WebSocket joystick commands to ROS2 `geometry_msgs/TwistStamped` messages on `/cmd_vel`.
 
 ## 🚀 Features
 
 - Async WebSocket server (multi‑client)
-- Publishes directly to ROS2 `/cmd_vel`
-- Standard JSON Twist schema (linear / angular)
+- Publishes directly to ROS2 `/cmd_vel` (TwistStamped)
+- Standard JSON TwistStamped schema (linear / angular)
 - Threaded ROS2 spin + asyncio loop
 - Configurable port via `HUSKY_WEBSOCKET_PORT`
 - Graceful handling of malformed JSON & disconnects
@@ -87,6 +87,7 @@ Monitor topic:
 ros2 topic echo /cmd_vel
 ```
 
+
 ## 📡 WebSocket API
 
 ### Connection
@@ -94,12 +95,18 @@ ros2 topic echo /cmd_vel
 - URL: `ws://localhost:8767`
 - Format: JSON
 
-### Message Format
+### Message Format (TwistStamped)
 
 ```jsonc
 {
-   "linear": { "x": 1.0, "y": 0.0, "z": 0.0 },   // m/s
-   "angular": { "x": 0.0, "y": 0.0, "z": 0.5 }   // rad/s (yaw)
+   "header": {
+      "stamp": "auto", // or ISO8601 timestamp, optional (server will fill if omitted)
+      "frame_id": "base_link" // optional
+   },
+   "twist": {
+      "linear": { "x": 1.0, "y": 0.0, "z": 0.0 },   // m/s
+      "angular": { "x": 0.0, "y": 0.0, "z": 0.5 }   // rad/s (yaw)
+   }
 }
 ```
 
@@ -107,15 +114,15 @@ ros2 topic echo /cmd_vel
 
 ```jsonc
 // Forward
-{"linear": {"x": 1.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": 0.0}}
+{"twist": {"linear": {"x": 1.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": 0.0}}}
 // Backward
-{"linear": {"x": -1.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": 0.0}}
+{"twist": {"linear": {"x": -1.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": 0.0}}}
 // Turn Right (yaw -)
-{"linear": {"x": 0.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": -1.0}}
+{"twist": {"linear": {"x": 0.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": -1.0}}}
 // Turn Left (yaw +)
-{"linear": {"x": 0.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": 1.0}}
+{"twist": {"linear": {"x": 0.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": 1.0}}}
 // Stop
-{"linear": {"x": 0.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": 0.0}}
+{"twist": {"linear": {"x": 0.0, "y": 0.0, "z": 0.0}, "angular": {"x": 0.0, "y": 0.0, "z": 0.0}}}
 ```
 
 ## 🏗️ Architecture
@@ -130,7 +137,7 @@ ros2 topic echo /cmd_vel
 ### Main Components
 
 1. `HuskyWebSocketServer` – Accepts clients & validates JSON
-2. `HuskyROS2Node` – Publishes `Twist` to `/cmd_vel`
+2. `HuskyROS2Node` – Publishes `TwistStamped` to `/cmd_vel`
 3. Threading – ROS2 spin in thread, asyncio loop in main thread
 
 ## 📁 Project Structure
@@ -177,7 +184,7 @@ Edit constructor in `husky_rcs.py` (`HuskyWebSocketServer`).
 
 Modify publisher line in `HuskyROS2Node`:
 ```python
-self.cmd_vel_publisher = self.create_publisher(Twist, 'cmd_vel', qos_profile)
+self.cmd_vel_publisher = self.create_publisher(TwistStamped, 'cmd_vel', qos_profile)
 ```
 
 ## 🐛 Troubleshooting
@@ -206,7 +213,7 @@ Manual WebSocket (websocat):
 ```bash
 sudo apt install -y websocat
 websocat ws://localhost:8767
-{"linear": {"x": 0.5, "y": 0, "z": 0}, "angular": {"x": 0, "y": 0, "z": 0.2}}
+{"twist": {"linear": {"x": 0.5, "y": 0, "z": 0}, "angular": {"x": 0, "y": 0, "z": 0.2}}}
 ```
 
 ## 📊 Monitoring
@@ -290,4 +297,4 @@ Groupe Carvi – <dev@carvi.ai>
 - ROS2 Jazzy Docs: https://docs.ros.org/en/jazzy/
 - Husky Docs: https://docs.clearpathrobotics.com/docs/robots/outdoor_robots/husky/
 - WebSocket RFC: https://www.rfc-editor.org/rfc/rfc6455
-- geometry_msgs: https://docs.ros.org/en/noetic/api/geometry_msgs/html/index.html
+- geometry_msgs/TwistStamped: https://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/TwistStamped.html

@@ -22,20 +22,22 @@ class JoystickClient:
                                   angular_z: float = 0.0):
         """Send a joystick command to the WebSocket server."""
         command = {
-            "linear": {
-                "x": linear_x,
-                "y": linear_y,
-                "z": 0.0
-            },
-            "angular": {
-                "x": 0.0,
-                "y": 0.0,
-                "z": angular_z
+            "twist": {
+                "linear": {
+                    "x": linear_x,
+                    "y": linear_y,
+                    "z": 0.0
+                },
+                "angular": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": angular_z
+                }
             }
         }
         
         await websocket.send(json.dumps(command))
-        logger.info(f"Sent command: linear_x={linear_x}, linear_y={linear_y}, angular_z={angular_z}")
+        logger.info(f"Sent TwistStamped command: linear_x={linear_x}, linear_y={linear_y}, angular_z={angular_z}")
         
     async def run_demo(self):
         """Run a demo sequence of robot movements."""
