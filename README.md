@@ -8,11 +8,12 @@ Teleoperation server bridging WebSocket joystick commands to ROS2 `geometry_msgs
 - **Automatic Rate Management**: Consistent 20Hz command publishing to ROS2
 - **Auto-Stop Safety**: Automatic robot stop on client disconnect or timeout
 - **Multi-Client Support**: Async WebSocket server handles multiple connections
-- **TwistStamped Publishing**: Direct publishing to `/teleop/cmd_vel`
+- **TwistStamped Publishing**: Direct publishing to `/websocket/cmd_vel` (high priority)
 - **Configurable Parameters**: Adjustable publish rate, timeout, host, and port
 - **Legacy Support**: Backward compatibility with simple Twist format
 - **Threaded Architecture**: ROS2 spin + asyncio loop for optimal performance
 - **Remote Access Ready**: Configurable network binding (0.0.0.0 default)
+- **Gamepad Safe**: Uses separate topic to avoid controller conflicts
 - **Systemd Integration**: Auto-setup via `install.sh`
 
 ## 📋 Prerequisites
@@ -425,7 +426,56 @@ websocket_server = HuskyWebSocketServer(ros2_node, host="0.0.0.0", port=8767)
 
 Modify publisher line in `HuskyROS2Node`:
 ```python
-self.teleop_cmd_vel_publisher = self.create_publisher(TwistStamped, 'teleop/cmd_vel', qos_profile)
+self.teleop_cmd_vel_publisher = self.create_publisher(TwistStamped, 'websocket/cmd_vel', qos_profile)
+```
+
+## 🚨 Gamepad Controller Conflicts
+
+**Problem**: Gamepad controller publishing zero commands to `/teleop/cmd_vel` interferes with WebSocket control.
+
+**Solution**: The server now publishes to `/websocket/cmd_vel` for higher priority. Configure your robot:
+
+### Quick Fix
+```bash
+# Run diagnostic script
+./configure_robot.sh
+
+# Disable gamepad controller
+sudo pkill -f joy_node
+sudo pkill -f teleop
+
+# Start WebSocket control
+python3 husky_rcs.py
+```
+
+### Permanent Fix (choose one):
+
+**Option A: Robot Parameter Configuration**
+```bash
+# Configure robot to use WebSocket topic
+ros2 param set /husky_velocity_controller cmd_vel_topic /websocket/cmd_vel
+```
+
+**Option B: Twist Mux Priority**
+```yaml
+# Add to robot launch file
+twist_mux:
+  topics:
+    websocket:
+      topic: /websocket/cmd_vel
+      timeout: 2.0
+      priority: 100  # Highest priority
+    gamepad:
+      topic: /teleop/cmd_vel  
+      timeout: 1.0
+      priority: 50   # Lower priority
+```
+
+**Option C: Disable Gamepad Service**
+```bash
+# Disable gamepad service permanently
+sudo systemctl disable joy_node
+sudo systemctl stop joy_node
 ```
 
 ## 🐛 Troubleshooting
@@ -434,8 +484,9 @@ self.teleop_cmd_vel_publisher = self.create_publisher(TwistStamped, 'teleop/cmd_
 |-------|-----------|-----|
 | Port already in use | `lsof -i :8767` | Change `HUSKY_WEBSOCKET_PORT` or kill PID |
 | `No module named 'rclpy'` | ROS env not sourced | `source /opt/ros/jazzy/setup.bash` |
-| No messages on `/teleop/cmd_vel` | `ros2 node list` empty | Restart server / verify logs |
+| No messages on `/websocket/cmd_vel` | `ros2 node list` empty | Restart server / verify logs |
 | Wrong topic name | `ros2 topic list` | Ensure publisher topic matches consumer |
+| **Gamepad interference** | **Commands overridden by gamepad** | **Run `./configure_robot.sh` to disable gamepad** |
 | Robot not moving | Check timeout/rate settings | Verify `HUSKY_PUBLISH_RATE` and `HUSKY_TIMEOUT_SECONDS` |
 | Commands not updating | Client sending same data | Implement delta control (only send changes) |
 | Auto-stop too aggressive | Timeout too short | Increase `HUSKY_TIMEOUT_SECONDS` (default: 2.0s) |

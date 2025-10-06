@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Husky Robot Control Server - ROS2 Node with WebSocket Server
-Receives joystick input via WebSocket and publishes to ROS2 cmd_vel topic.
+Receives joystick input via WebSocket and publishes to ROS2 websocket/cmd_vel topic.
 """
 
 import asyncio
@@ -161,22 +161,22 @@ class HuskyWebSocketServer:
 
 
 class HuskyROS2Node(Node):
-    """ROS2 node for publishing teleop/cmd_vel messages."""
+    """ROS2 node for publishing websocket/cmd_vel messages."""
     
     def __init__(self):
         super().__init__('husky_control_server')
         
-        # Create QoS profile for reliable communication
+        # Create QoS profile for reliable, high-priority communication
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.VOLATILE,
-            depth=10
+            depth=1  # Reduced depth for lower latency
         )
         
-        # Create publisher for cmd_vel
+        # Create publisher for cmd_vel with high priority topic
         self.teleop_cmd_vel_publisher = self.create_publisher(
             TwistStamped, 
-            'teleop/cmd_vel', 
+            'websocket/cmd_vel',  # Higher priority topic for WebSocket control
             qos_profile
         )
         
