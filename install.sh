@@ -93,7 +93,7 @@ check_ros2() {
     log_info "Checking ROS2 installation..."
     source /opt/ros/jazzy/setup.bash
     if command -v ros2 &> /dev/null; then
-    
+
         ROS2_VERSION=$(ros2 --version | grep -oP 'jazzy|rolling|humble|galactic|foxy' | head -1)
         if [[ "$ROS2_VERSION" != "jazzy" ]]; then
             log_warning "ROS2 version is $ROS2_VERSION, but Jazzy is recommended"
@@ -102,15 +102,9 @@ check_ros2() {
         fi
     fi
 
-    # Install ROS2 Python packages
-    log_info "Installing ROS2 Python packages..."
-    sudo apt install -y python3-websockets python3-rosdep python3-colcon-common-extensions
-
-    # Initialize rosdep if not already done
-    if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]]; then
-        sudo rosdep init
-        rosdep update
-    fi
+    # Install websockets Python packages
+    log_info "Installing websockets Python packages..."
+    sudo apt install -y python3-websockets
 }
 
 # Install uv package manager
