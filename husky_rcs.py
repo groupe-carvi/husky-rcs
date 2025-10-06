@@ -176,7 +176,7 @@ class HuskyROS2Node(Node):
         # Create publisher for cmd_vel - Husky controller listens to /cmd_vel
         self.teleop_cmd_vel_publisher = self.create_publisher(
             TwistStamped, 
-            'cmd_vel',  # Main Husky controller topic
+            'teleop/cmd_vel',  # Main Husky controller topic
             qos_profile
         )
         
