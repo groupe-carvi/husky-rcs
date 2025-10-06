@@ -92,21 +92,8 @@ check_python() {
 check_ros2() {
     log_info "Checking ROS2 installation..."
     source /opt/ros/jazzy/setup.bash
-    if ! command -v ros2 &> /dev/null; then
-        log_warning "ROS2 is not installed. Installing ROS2 Jazzy..."
-
-        # Add ROS2 repository
-        sudo apt update
-        sudo apt install -y software-properties-common curl gnupg lsb-release
-
-        sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
-
-        sudo apt update
-        sudo apt install -y ros-jazzy-desktop-full
-
-        log_success "ROS2 Jazzy installed successfully"
-    else
+    if command -v ros2 &> /dev/null; then
+    
         ROS2_VERSION=$(ros2 --version | grep -oP 'jazzy|rolling|humble|galactic|foxy' | head -1)
         if [[ "$ROS2_VERSION" != "jazzy" ]]; then
             log_warning "ROS2 version is $ROS2_VERSION, but Jazzy is recommended"
@@ -215,6 +202,7 @@ main() {
     check_root
     check_ubuntu_version
     check_python
+    check_ros2
     install_uv
     install_python_deps
     create_service_file
