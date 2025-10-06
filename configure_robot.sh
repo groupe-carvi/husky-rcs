@@ -36,9 +36,8 @@ ros2 topic list | grep -E "(cmd_vel|teleop|joy|websocket)" || echo "No velocity 
 echo
 echo "3. Checking topic rates..."
 echo "-------------------------"
-check_topic_rate "/teleop/cmd_vel"
-check_topic_rate "/websocket/cmd_vel" 
 check_topic_rate "/cmd_vel"
+check_topic_rate "/teleop/cmd_vel" 
 check_topic_rate "/joy/cmd_vel"
 
 echo
@@ -55,13 +54,13 @@ echo "  pkill -f joy_node"
 echo "  pkill -f teleop"
 
 echo
-echo "Option B: Remap robot velocity controller to use WebSocket topic"
-echo "---------------------------------------------------------------"
-echo "Add to your robot's launch file or run:"
-echo "  ros2 param set /husky_velocity_controller cmd_vel_topic /websocket/cmd_vel"
-echo "  # or"
-echo "  ros2 param set /twist_mux topics.websocket.topic /websocket/cmd_vel"
+echo "Option B: Use twist_mux to prioritize WebSocket over gamepad"
+echo "------------------------------------------------------------"
+echo "Configure twist_mux (if available) to prioritize your WebSocket commands:"
+echo "  ros2 param set /twist_mux topics.websocket.topic /cmd_vel"
+echo "  ros2 param set /twist_mux topics.websocket.timeout 2.0"
 echo "  ros2 param set /twist_mux topics.websocket.priority 100"
+echo "  ros2 param set /twist_mux topics.joy.priority 50"
 
 echo
 echo "Option C: Use twist_mux for topic prioritization"
@@ -87,16 +86,14 @@ echo "=============================="
 echo "After applying solutions, test with:"
 echo "  python3 example_client.py"
 echo "  # and monitor with:"
-echo "  ros2 topic echo /websocket/cmd_vel"
+echo "  ros2 topic echo /cmd_vel"
 
 echo
 echo "6. Emergency stop:"
 echo "=================="
 echo "If robot moves unexpectedly:"
-echo "  ros2 topic pub /cmd_vel geometry_msgs/Twist '{}' --once"
-echo "  # or"
-echo "  ros2 topic pub /websocket/cmd_vel geometry_msgs/TwistStamped '{}' --once"
+echo "  ros2 topic pub /cmd_vel geometry_msgs/TwistStamped '{}' --once"
 
 echo
 echo "🎯 Quick fix: Run this to disable gamepad and start WebSocket control:"
-echo "sudo pkill -f 'joy.*node' && python3 husky_rcs.py"
+echo "sudo pkill -f 'joy.*node' && sudo pkill -f 'teleop.*joy' && python3 husky_rcs.py"
