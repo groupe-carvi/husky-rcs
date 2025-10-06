@@ -4,13 +4,16 @@ Teleoperation server bridging WebSocket joystick commands to ROS2 `geometry_msgs
 
 ## 🚀 Features
 
-- Async WebSocket server (multi‑client)
-- Publishes directly to ROS2 `/teleop/cmd_vel` (TwistStamped)
-- Standard JSON TwistStamped schema (linear / angular)
-- Threaded ROS2 spin + asyncio loop
-- Configurable port via `HUSKY_WEBSOCKET_PORT`
-- Graceful handling of malformed JSON & disconnects
-- Systemd deployment auto-setup via `install.sh`
+- **Delta Control System**: Clients send only command changes, server manages publish rate
+- **Automatic Rate Management**: Consistent 20Hz command publishing to ROS2
+- **Auto-Stop Safety**: Automatic robot stop on client disconnect or timeout
+- **Multi-Client Support**: Async WebSocket server handles multiple connections
+- **TwistStamped Publishing**: Direct publishing to `/teleop/cmd_vel`
+- **Configurable Parameters**: Adjustable publish rate, timeout, host, and port
+- **Legacy Support**: Backward compatibility with simple Twist format
+- **Threaded Architecture**: ROS2 spin + asyncio loop for optimal performance
+- **Remote Access Ready**: Configurable network binding (0.0.0.0 default)
+- **Systemd Integration**: Auto-setup via `install.sh`
 
 ## 📋 Prerequisites
 
@@ -58,9 +61,54 @@ chmod +x start.sh
 
 Optional: copy `.env.example` to `.env` and adjust values.
 
-## 🎮 Usage
+## 🎮 Delta Control System
 
-Start (script):
+### How It Works
+
+The server implements a **delta control system** that solves common teleoperation issues:
+
+1. **Client sends commands only when needed** (delta changes)
+2. **Server maintains last command state** internally
+3. **Server publishes at consistent rate** (20Hz default) to ROS2
+4. **Automatic safety stop** on client disconnect or timeout
+
+### Benefits
+
+- ✅ **Stable robot control** regardless of client network issues
+- ✅ **Reduced network traffic** - no need for continuous commands
+- ✅ **Perfect for mobile apps** - works with Flutter, React Native, etc.
+- ✅ **Automatic safety** - robot stops if client disconnects
+- ✅ **Consistent performance** - 20Hz ROS2 publishing regardless of client rate
+
+### Client Implementation
+
+**Before (problematic):**
+```javascript
+// Bad: Client must send 20+ commands/second continuously
+setInterval(() => {
+    sendCommand(currentJoystick);  // Network issues cause robot jerky movement
+}, 50); // 20Hz - hard to maintain
+```
+
+**Now (delta control):**
+```javascript
+// Good: Send only when joystick changes
+function onJoystickChange(newValue) {
+    if (newValue !== lastValue) {
+        sendCommand(newValue);  // Send only deltas
+        lastValue = newValue;
+    }
+}
+
+// Send stop when user releases control
+function onJoystickRelease() {
+    sendCommand({twist: {linear: {x:0, y:0, z:0}, angular: {x:0, y:0, z:0}}});
+}
+```
+
+### Starting the Server
+
+## 🚀 Usage
 
 ```bash
 ./start.sh
@@ -340,6 +388,10 @@ husky-rcs/
 HUSKY_WEBSOCKET_HOST=0.0.0.0
 # WebSocket server port (default 8767)
 HUSKY_WEBSOCKET_PORT=8767
+# Command publish rate in Hz (default: 20.0)
+HUSKY_PUBLISH_RATE=20.0
+# Client timeout in seconds (default: 2.0)
+HUSKY_TIMEOUT_SECONDS=2.0
 # Optional ROS domain
 ROS_DOMAIN_ID=0
 ```
@@ -384,6 +436,23 @@ self.teleop_cmd_vel_publisher = self.create_publisher(TwistStamped, 'teleop/cmd_
 | `No module named 'rclpy'` | ROS env not sourced | `source /opt/ros/jazzy/setup.bash` |
 | No messages on `/teleop/cmd_vel` | `ros2 node list` empty | Restart server / verify logs |
 | Wrong topic name | `ros2 topic list` | Ensure publisher topic matches consumer |
+| Robot not moving | Check timeout/rate settings | Verify `HUSKY_PUBLISH_RATE` and `HUSKY_TIMEOUT_SECONDS` |
+| Commands not updating | Client sending same data | Implement delta control (only send changes) |
+| Auto-stop too aggressive | Timeout too short | Increase `HUSKY_TIMEOUT_SECONDS` (default: 2.0s) |
+| Jerky robot movement | Publish rate issues | Adjust `HUSKY_PUBLISH_RATE` (default: 20Hz) |
+
+### Delta Control Debugging
+
+```bash
+# Check server logs for delta control info
+journalctl -u husky-control-server -f | grep -E "(Delta|timeout|auto-stop)"
+
+# Monitor actual command rate to ROS2
+ros2 topic hz /teleop/cmd_vel
+
+# Check for client disconnection handling
+# Server should auto-stop robot when client disconnects
+```
 
 ## 🧪 Testing
 
