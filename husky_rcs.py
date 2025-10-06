@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class HuskyWebSocketServer:
     """WebSocket server for receiving joystick commands for Husky robot."""
     
-    def __init__(self, ros2_node, host="localhost", port=8767):
+    def __init__(self, ros2_node, host="0.0.0.0", port=8767):
         self.host = host
         self.port = port
         self.clients = set()
@@ -174,12 +174,13 @@ async def main():
     ros2_thread = threading.Thread(target=lambda: rclpy.spin(ros2_node), daemon=True)
     ros2_thread.start()
     
-    # Get WebSocket port from environment variable or use default
+    # Get WebSocket configuration from environment variables or use defaults
+    websocket_host = os.getenv('HUSKY_WEBSOCKET_HOST', '0.0.0.0')
     websocket_port = int(os.getenv('HUSKY_WEBSOCKET_PORT', 8767))
     
     # Create and start WebSocket server
-    websocket_server = HuskyWebSocketServer(ros2_node, port=websocket_port)
-    logger.info(f"Starting WebSocket server on localhost:{websocket_port}")
+    websocket_server = HuskyWebSocketServer(ros2_node, host=websocket_host, port=websocket_port)
+    logger.info(f"Starting WebSocket server on {websocket_host}:{websocket_port}")
     
     try:
         # Start the WebSocket server

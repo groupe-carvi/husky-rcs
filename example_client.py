@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class JoystickClient:
     """Example joystick client that sends commands to the Husky WebSocket server."""
     
-    def __init__(self, uri="ws://localhost:8767"):
+    def __init__(self, uri="ws://192.168.7.2:8767"):
         self.uri = uri
         
     async def send_joystick_command(self, websocket, linear_x: float = 0.0, linear_y: float = 0.0, 
